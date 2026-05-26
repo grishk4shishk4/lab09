@@ -7,7 +7,7 @@ on:
     branches: [ main, master ]
 
 jobs:
-  build-linux:
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
@@ -40,16 +40,15 @@ jobs:
             -v /tmp/print-logs:/logs \
             -i print-demo
 
-          EXPECTED_CONTENT="Hello\nfrom\nDocker"
-          ACTUAL_CONTENT=$(cat /tmp/print-logs/log.txt)
+          printf "Hello\nfrom\nDocker\n" > /tmp/expected.txt
 
-          if [ "$ACTUAL_CONTENT" != "$EXPECTED_CONTENT" ]; then
+          if diff /tmp/expected.txt /tmp/print-logs/log.txt; then
+            echo "Container works correctly: logs saved to host volume."
+          else
             echo "Log content mismatch!"
-            echo "Expected:"
-            echo "$EXPECTED_CONTENT"
-            echo "Actual:"
-            echo "$ACTUAL_CONTENT"
             exit 1
           fi
 
-          echo "Container works correctly: logs saved to host volume."
+
+
+          
