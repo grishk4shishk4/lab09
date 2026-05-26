@@ -3,13 +3,14 @@ name: CI
 on:
   push:
     branches: [ main, master ]
+    tags:
+      - 'v*'
   pull_request:
     branches: [ main, master ]
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -34,14 +35,11 @@ jobs:
       - name: Test Docker container with volume and stdin
         run: |
           mkdir -p /tmp/print-logs
-
           printf "Hello\nfrom\nDocker\n" | docker run --rm \
             -e LOG_PATH=/logs/log.txt \
             -v /tmp/print-logs:/logs \
             -i print-demo
-
           printf "Hello\nfrom\nDocker\n" > /tmp/expected.txt
-
           if diff /tmp/expected.txt /tmp/print-logs/log.txt; then
             echo "Container works correctly: logs saved to host volume."
           else
@@ -49,6 +47,28 @@ jobs:
             exit 1
           fi
 
+      - name: Build binary package using CPack
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF
+          cmake --build .
+          cpack -G TGZ
 
+      - name: Upload package as artifact
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: actions/upload-artifact@v4
+        with:
+          name: print-package
+          path: build/*.tar.gz
 
-          
+      - name: Create GitHub Release and upload asset
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          gh release create "$VERSION" \
+            --title "$VERSION" \
+            --notes "Release $VERSION" \
+            build/*.tar.gz
