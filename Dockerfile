@@ -15,6 +15,8 @@ COPY include ./include
 COPY sources ./sources
 COPY demo ./demo
 
+COPY LICENSE README.md DESCRIPTION ./
+
 RUN cmake -B . -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DBUILD_EXAMPLES=OFF && \
     cmake --build . --target demo
 
